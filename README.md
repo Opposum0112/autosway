@@ -1,155 +1,188 @@
 # AutoSway
 
-AutoSway is a small, scriptable desktop-automation layer for Sway.
+AutoSway is a small, agent-driven control layer for Sway.
 
-It combines **Sway IPC**, **Nushell**, **Fuzzel**, **Swaybar**, and optional **Goose** recipes. The goal is simple: keep Sway itself small, expose useful capabilities as deterministic commands, and compose them into reusable desktop workflows.
+You tell an agent what you want to change. AutoSway gives the agent a small, predictable interface for reading Sway state, changing windows/workspaces, and managing Swaybar widgets. Sway remains the desktop; `swaymsg` remains the control plane.
 
 ## Quickstart
 
 ### Prerequisites
 
-- Sway + Wayland
-- Nushell 0.90+
+- Linux with Sway + Wayland
+- Nushell
 - `swaymsg`
-- Fuzzel for the launcher
-- Foot for the example terminal workflow
-- GLib/GIO (`gio`) for launching `.desktop` applications
-- `swaylock` for the lock capability
-- Goose is optional
+- Swaybar
+- A terminal such as Foot
+- Goose or another agent is optional
 
 ### Install
 
+From this repository:
+
 ```bash
-nu scripts/install.nu
+nu install.nu
 ```
 
-### Verify
+Then add the status command to your Sway config:
+
+```ini
+bar {
+    status_command autosway bar
+}
+```
+
+Reload Sway:
+
+```bash
+swaymsg reload
+```
+
+Check the API:
 
 ```bash
 autosway state workspaces
 autosway state outputs
-autosway state tree
-autosway workspace 1
-autosway launch foot
+autosway widget list
 ```
 
-### Enable the launcher and status bar
+### Agent examples
 
-Add the following to your Sway configuration:
-
-```ini
-bindsym $mod+d exec autosway-launcher
-
-bar {
-    status_command autosway-status
-}
-```
-
-See [Bootstrap](docs/BOOTSTRAP.md) for prerequisites, system requirements, installation, and configuration.
-
-## Architecture
-
-![Diagram showing AutoSway presentation, orchestration, capabilities, execution boundary, and Sway layers.](docs/architecture.svg)
-
-The system is split into small layers:
+An agent can turn requests such as these into AutoSway operations:
 
 ```text
-Presentation
-  Fuzzel · Swaybar · Foot
-           │
-           ▼
-Orchestration
-  Nushell · recipes · events
-           │
-           ▼
-Capabilities
-  applications · windows
-  workspaces · outputs · system
-           │
-           ▼
-Execution boundary
-  capability → swaymsg → Sway IPC
-           │
-           ▼
-      Sway / Wayland
+"Add a clock to my bar."
+"Remove the battery widget."
+"Make the clock green."
+"Show CPU and memory."
+"Switch to workspace 3."
+"Move the focused window to workspace research."
 ```
 
-## Workflow
-
-AutoSway follows a simple execution loop:
+The corresponding interface is deliberately small:
 
 ```text
-Discover state
-     ↓
-Select capability or recipe
-     ↓
-Execute the smallest required action
-     ↓
-Verify the resulting state
-     ↓
-Report the result
+autosway state ...
+autosway workspace ...
+autosway window ...
+autosway widget ...
+autosway bar
 ```
 
-For event-driven automation:
+## How it works
 
 ```text
-Sway IPC event
-      ↓
-Event router
-      ↓
-Policy or recipe
-      ↓
-Capability
-      ↓
-swaymsg
-      ↓
-Verify
+User
+  │
+  ▼
+Goose / Agent
+  │  intent
+  ▼
+AutoSway
+  │
+  ├── Sway state/actions ──► swaymsg ──► Sway
+  │
+  └── Bar widgets ─────────► widget config ──► Swaybar
 ```
 
-For agent-driven workflows, Goose remains outside the execution boundary:
+The agent does not need to know Sway's implementation details. It asks AutoSway for a desktop operation; AutoSway translates that operation into the appropriate Sway IPC command or widget configuration.
+
+Sway's IPC can both query desktop state and execute Sway commands. Swaybar's `status_command` consumes the status stream, so widgets are kept as a small AutoSway-managed layer rather than mixed into the compositor itself. citeturn1search1turn1search0
+
+## Typical workflow
 
 ```text
-Goose → Recipe → AutoSway capabilities → swaymsg → Sway
+1. Agent understands the user's request
+2. Agent reads current state when needed
+3. Agent selects an AutoSway operation
+4. AutoSway changes Sway or widget state
+5. Agent verifies the result
 ```
 
-## Components
+For example:
 
-- **Launcher** — category-first Fuzzel UI backed by XDG `.desktop` metadata.
-- **Status** — independent Nushell widgets rendered through Swaybar's i3bar JSON protocol.
-- **Capabilities** — explicit commands for state, windows, workspaces, outputs, application launch, and locking.
-- **Recipes** — declarative workflows that compose capabilities.
-- **Events** — opt-in Sway IPC event stream for deterministic automation.
-- **Agent boundary** — Goose can orchestrate recipes without unrestricted generated `swaymsg` commands.
+```text
+"Add a green clock"
 
-## Repository layout
+Goose
+  ↓
+autosway widget add clock
+  ↓
+autosway widget set clock color #00ff88
+  ↓
+Swaybar reads the updated widget configuration
+  ↓
+clock appears in green
+```
+
+No desktop framework is being replaced. AutoSway is intentionally the thin agent-facing layer over Sway.
+
+## Repository structure
 
 ```text
 autosway/
-├── bin/
-│   ├── autosway.nu
-│   ├── autosway-events.nu
-│   ├── autosway-launcher.nu
-│   └── autosway-status.nu
-├── capabilities/
-├── launcher/
-├── widgets/
-├── status/
-├── recipes/
-├── events/
+├── autosway.nu          # agent-facing control API
+├── install.nu           # simple installer
 ├── config/
-├── docs/
-└── scripts/
+│   └── widgets.nuon     # user-managed widget state
+├── widgets/
+│   ├── clock.nu
+│   ├── cpu.nu
+│   ├── memory.nu
+│   └── battery.nu
+└── docs/
+    └── architecture.svg
 ```
 
-## Design principles
+## Current capabilities
 
-1. **Sensible defaults** — use the native Sway/Wayland ecosystem where practical.
-2. **One job per component** — keep presentation, orchestration, and execution separate.
-3. **State before action** — inspect desktop state before mutating it.
-4. **Verify after mutation** — confirm that the requested state was reached.
-5. **Explicit capabilities** — keep automation and agents inside a reviewed capability boundary.
-6. **Recipes express intent** — deterministic code performs the actual desktop operations.
+### Sway
 
-## Status
+- inspect workspaces, outputs, inputs, and the layout tree
+- switch workspace
+- focus a window by Sway criteria
+- move a window to a workspace or output
+- toggle fullscreen
+- toggle floating
+- show/move scratchpad
+- launch an application
+- lock the session
 
-Bootstrap / experimental. The current repository provides the capability CLI, event reader, category launcher, Swaybar widget pipeline, installer, and recipe examples.
+### Widgets
+
+- list widgets
+- add a widget
+- remove a widget
+- change widget colour
+- change clock format
+- run the Swaybar status stream
+
+Widgets are intentionally independent scripts. New widgets can be added without turning AutoSway into a large desktop framework.
+
+## Current status
+
+**Early prototype / agent-control foundation.**
+
+Working design:
+
+- thin Nushell API
+- Sway IPC for compositor state and actions
+- Swaybar status stream
+- declarative widget configuration
+- independently extensible widgets
+- suitable boundary for Goose or another agent
+
+Not yet implemented:
+
+- native Goose/MCP server
+- automatic discovery of arbitrary widget providers
+- persistent agent memory/preferences
+- broader desktop capabilities such as audio, notifications, and application-specific automation
+- automated tests on a live Sway session
+
+The project is intentionally small at this stage. The next extensions should be driven by real agent use cases rather than by adding another abstraction layer.
+
+## Design principle
+
+> **Goose is the brain. AutoSway is the small control surface. Sway is the desktop.**
+
+AutoSway should grow by adding useful capabilities, not by becoming another desktop shell.
