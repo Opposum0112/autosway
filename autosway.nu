@@ -38,7 +38,7 @@ def render_bar [] {
   mut first=true
   loop {
     let cfg=load_config
-    let root=($env.AUTOSWAY_ROOT?|default(pwd))
+    let root=($env.AUTOSWAY_ROOT?|default($env.HOME|path join ".config/autosway"))
     let blocks=($cfg.widgets|each {|w|
       let p=($root|path join "widgets" $"($w.name).nu")
       if ($p|path exists) {
