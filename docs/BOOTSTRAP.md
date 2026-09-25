@@ -1,56 +1,65 @@
 # Bootstrap
 
-## Prerequisites
+## Requirements
 
-- Sway / Wayland
+AutoSway is designed for an existing Sway desktop.
+
+Required:
+- Linux + Sway + Wayland
 - Nushell
 - `swaymsg`
-- Fuzzel
-- Foot
-- GLib/GIO (`gio`)
-- `swaylock`
+- Swaybar
 
-Optional: Goose for agent recipes and a Nerd Font for widget icons.
+Optional:
+- Goose or another agent
+- Foot or another terminal
 
-## System requirements
-
-AutoSway is intentionally lightweight:
-
-- Linux running Sway
-- 64-bit userspace recommended
-- 2 GB RAM is sufficient for the automation layer itself
-- no additional GPU requirement beyond the existing Sway/Wayland setup
-- writable `$HOME`
-- `~/.local/bin` in `PATH`
+No dedicated GPU, server, database, or background daemon is required by AutoSway.
 
 ## Install
 
+From the repository:
+
 ```bash
-nu scripts/install.nu
+nu install.nu
 ```
 
-Verify:
-```bash
-autosway state workspaces
-autosway state outputs
-autosway state tree
-```
+Add:
 
-Enable the category launcher:
-```ini
-bindsym $mod+d exec autosway-launcher
-```
-
-Enable Swaybar widgets:
 ```ini
 bar {
-    status_command autosway-status
+    status_command autosway bar
 }
 ```
 
-First workflow:
+Then:
+
 ```bash
-autosway workspace 1
-autosway launch foot
-autosway state tree
+swaymsg reload
+autosway state workspaces
+autosway widget list
 ```
+
+## First agent workflow
+
+Ask the agent:
+
+```text
+Add a clock and make it green.
+```
+
+The intended sequence is:
+
+```text
+inspect → widget add → widget set → verify
+```
+
+The widget configuration is stored at:
+
+```text
+~/.config/autosway/widgets.nuon
+```
+
+## Current status
+
+This is an early prototype. The control API and widget model are implemented, but live-Sway integration and automated testing are still required before calling it production-ready.
