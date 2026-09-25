@@ -1,7 +1,7 @@
 {
   widgets: [
     {name: "clock", color: "#e6e6e6", format: "%H:%M"}
-    {name: "cpu", color: "#8ab4f8"}
-    {name: "memory", color: "#81c995"}
+    {name: "cpu", color: "#8ab4f8", progress: true, width: 8, actions: {click: {type: "launch", args: ["foot", "-e", "btop"]}}}
+    {name: "memory", color: "#81c995", progress: true, width: 8}
   ]
 }
