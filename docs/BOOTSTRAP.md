@@ -2,69 +2,55 @@
 
 ## Prerequisites
 
-- Sway running as the current Wayland compositor.
-- Nushell installed as nu.
-- swaymsg available in PATH.
-- Goose installed if you want agent-driven recipes.
-- Fuzzel and Foot are optional for launcher/terminal workflows.
+- Sway / Wayland
+- Nushell
+- `swaymsg`
+- Fuzzel
+- Foot
+- GLib/GIO (`gio`)
+- `swaylock`
 
-## Install AutoSway
+Optional: Goose for agent recipes and a Nerd Font for widget icons.
 
-From the repository root:
+## System requirements
 
-~~~nu
+AutoSway is intentionally lightweight:
+
+- Linux running Sway
+- 64-bit userspace recommended
+- 2 GB RAM is sufficient for the automation layer itself
+- no additional GPU requirement beyond the existing Sway/Wayland setup
+- writable `$HOME`
+- `~/.local/bin` in `PATH`
+
+## Install
+
+```bash
 nu scripts/install.nu
-~~~
+```
 
 Verify:
-
-~~~bash
+```bash
 autosway state workspaces
 autosway state outputs
 autosway state tree
-~~~
+```
 
-## First deterministic workflow
+Enable the category launcher:
+```ini
+bindsym $mod+d exec autosway-launcher
+```
 
-~~~bash
+Enable Swaybar widgets:
+```ini
+bar {
+    status_command autosway-status
+}
+```
+
+First workflow:
+```bash
 autosway workspace 1
 autosway launch foot
-~~~
-
-Then inspect:
-
-~~~bash
 autosway state tree
-~~~
-
-## Goose
-
-Run an example recipe:
-
-~~~bash
-goose run --recipe recipes/security-research.yaml --interactive
-~~~
-
-Goose recipes support YAML instructions, prompts, parameters, extensions, and subrecipes. Goose also supports recipe execution through the CLI. See the official Goose recipe reference for current syntax.
-
-## Event router
-
-The event router is intentionally opt-in:
-
-~~~bash
-autosway-events window
-~~~
-
-Start it only after reviewing the policy in config/event-policy.nuon.
-
-## Sway configuration
-
-AutoSway does not replace your Sway configuration. Add only the bindings you want, for example:
-
-~~~ini
-bindsym $mod+d exec fuzzel
-bindsym $mod+Return exec foot
-bindsym $mod+l exec swaylock
-~~~
-
-Keep the compositor configuration small and put higher-level automation in AutoSway scripts.
+```
