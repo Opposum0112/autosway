@@ -2,24 +2,31 @@
 
 let root = ($env.PWD | path expand)
 let bin = ($root | path join "bin")
+let widgets = ($root | path join "widgets")
 let target = ($env.HOME | path join ".local/bin")
+let data = ($env.HOME | path join ".local/share/autosway")
 
 mkdir $target
+mkdir $data
+mkdir ($data | path join "widgets")
 
-let autosway_script = ($target | path join "autosway")
-let events_script = ($target | path join "autosway-events")
-let autosway_source = ($bin | path join "autosway.nu")
-let events_source = ($bin | path join "autosway-events.nu")
+def install-wrapper [source:string, name:string] {
+  let target_path = ($env.HOME | path join ".local/bin" $name)
+  let wrapper = $"#!/bin/sh\nexec nu '($source)' \"$@\"\n"
+  $wrapper | save -f $target_path
+  ^chmod +x $target_path
+  print $"installed ($target_path)"
+}
 
-let autosway_launcher = "#!/bin/sh\nexec nu '" + $autosway_source + "' \"$@\"\n"
-let events_launcher = "#!/bin/sh\nexec nu '" + $events_source + "' \"$@\"\n"
+install-wrapper ($bin | path join "autosway.nu") "autosway"
+install-wrapper ($bin | path join "autosway-events.nu") "autosway-events"
+install-wrapper ($bin | path join "autosway-launcher.nu") "autosway-launcher"
+install-wrapper ($bin | path join "autosway-status.nu") "autosway-status"
 
-$autosway_launcher | save -f $autosway_script
-$events_launcher | save -f $events_script
+for f in (glob ($widgets | path join "*.nu")) {
+  let dest = ($data | path join "widgets" ($f | path basename))
+  cp $f $dest
+}
 
-^chmod +x $autosway_script $events_script
-
-print $"installed ($autosway_script)"
-print $"installed ($events_script)"
 print "Ensure ~/.local/bin is in PATH."
-print "Verify with: autosway state workspaces"
+print "Verify: autosway state workspaces"
