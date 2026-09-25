@@ -1,0 +1,7 @@
+{
+  widgets: [
+    {name: "clock", color: "#e6e6e6", format: "%H:%M"}
+    {name: "cpu", color: "#8ab4f8"}
+    {name: "memory", color: "#81c995"}
+  ]
+}
