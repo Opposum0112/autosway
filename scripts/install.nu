@@ -6,19 +6,20 @@ let target = ($env.HOME | path join ".local/bin")
 
 mkdir $target
 
-for name in ["autosway.nu", "autosway-events.nu"] {
-  let src = ($bin | path join $name)
-  let dst_name = ($name | str replace ".nu" "")
-  let dst = ($target | path join $dst_name)
+let autosway_script = ($target | path join "autosway")
+let events_script = ($target | path join "autosway-events")
+let autosway_source = ($bin | path join "autosway.nu")
+let events_source = ($bin | path join "autosway-events.nu")
 
-  if $dst | path exists {
-    rm -f $dst
-  }
+let autosway_launcher = "#!/bin/sh\nexec nu '" + $autosway_source + "' \"$@\"\n"
+let events_launcher = "#!/bin/sh\nexec nu '" + $events_source + "' \"$@\"\n"
 
-  ln -s $src $dst
-  print $"installed ($dst)"
-}
+$autosway_launcher | save -f $autosway_script
+$events_launcher | save -f $events_script
 
-print ""
+^chmod +x $autosway_script $events_script
+
+print $"installed ($autosway_script)"
+print $"installed ($events_script)"
 print "Ensure ~/.local/bin is in PATH."
 print "Verify with: autosway state workspaces"
