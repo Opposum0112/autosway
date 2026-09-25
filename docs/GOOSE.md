@@ -1,44 +1,31 @@
-# Goose integration
+# Goose
 
-AutoSway treats Goose as an optional orchestration layer.
+Goose is the optional agent layer.
 
-Recommended execution boundary:
+The intended relationship is:
 
-~~~text
-Goose -> AutoSway CLI -> swaymsg -> Sway IPC
-~~~
+```text
+Goose
+  ↓
+natural-language intent
+  ↓
+AutoSway API
+  ↓
+Sway / Swaybar
+```
 
-Avoid:
+Goose should use the AutoSway vocabulary rather than generating arbitrary `swaymsg` commands.
 
-~~~text
-Goose -> arbitrary generated swaymsg
-~~~
+Useful operations include:
 
-This gives the agent a stable capability vocabulary.
+```text
+state
+workspace
+window
+widget
+bar
+launch
+lock
+```
 
-## Future MCP extension
-
-A future AutoSway MCP server should expose typed tools such as:
-
-- get_tree
-- get_workspaces
-- get_outputs
-- focus
-- move_window
-- switch_workspace
-- launch
-- fullscreen
-- floating
-- scratchpad
-
-The MCP layer should call the same internal capability implementation used by the CLI so CLI and agent execution have one source of truth.
-
-## Recipes as contracts
-
-Keep recipes declarative:
-
-~~~text
-intent -> capability calls -> verification
-~~~
-
-This keeps model-specific reasoning outside the deterministic execution layer.
+A future native MCP server can expose the same operations without changing the underlying AutoSway implementation.
