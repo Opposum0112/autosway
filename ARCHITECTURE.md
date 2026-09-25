@@ -1,102 +1,111 @@
 # AutoSway Architecture
 
-## Purpose
+AutoSway is intentionally small.
 
-AutoSway is a small, scriptable desktop-automation layer for Sway. It combines Sway IPC, swaymsg, Nushell, and Goose recipes without introducing a monolithic desktop shell.
-
-## Design principles
-
-1. Sensible defaults — start with Sway's native ecosystem and configure only what is necessary.
-2. Orthogonality — Sway manages windows; swaymsg is the control/API surface; Nushell handles structured automation; Fuzzel launches applications.
-3. One job per component — avoid duplicating functionality across desktop frameworks.
-4. State before action — automation should inspect Sway state before mutating it.
-5. Verify after mutation — recipes should confirm that requested state was reached.
-6. Explicit capabilities — agents should use a small allowlisted command surface rather than arbitrary compositor commands where practical.
-7. Recipes are intent — Goose recipes describe the desired desktop workflow; scripts implement deterministic mechanics.
+It is not a desktop shell and it does not replace Sway. It gives an agent a predictable interface for controlling a Sway desktop.
 
 ## Runtime model
 
-~~~text
-Goose recipe
-    |
-    v
-Agent intent / workflow
-    |
-    v
-AutoSway capability CLI
-    |
-    +---- state ----> swaymsg IPC ----> Sway state
-    |
-    +---- action ---> swaymsg IPC ----> Sway mutation
-    |
-    +---- events ---> swaymsg IPC ----> Nushell router
-                                      |
-                                      v
-                                automation trigger
-~~~
+```text
+                 Goose / Agent
+                      │
+                    intent
+                      ▼
+                 AutoSway API
+                ┌─────┴─────┐
+                │           │
+                ▼           ▼
+            Sway ops     Widgets
+                │           │
+             swaymsg     config
+                │           │
+                ▼           ▼
+              Sway       Swaybar
+                │           │
+                └─────┬─────┘
+                      ▼
+                Desktop state
+                      │
+                      ▼
+                 Agent verifies
+```
 
-## Capability boundary
+## Small API
 
-The initial CLI exposes:
+The agent-facing vocabulary is deliberately limited:
 
-- state tree
-- state workspaces
-- state outputs
-- state inputs
-- workspace <name>
-- focus <criteria>
-- move <criteria> workspace <name>
-- move <criteria> output <name>
-- fullscreen
-- floating
-- scratchpad show
-- scratchpad move
-- launch <command...>
-- lock
-- events <event>
+```text
+state
+workspace
+window
+widget
+bar
+launch
+lock
+```
 
-The wrapper deliberately does not expose an unrestricted swaymsg passthrough as its primary agent interface.
+### State
 
-## Event model
+Read Sway state:
 
-Sway IPC events can drive deterministic automation:
+```text
+autosway state tree
+autosway state workspaces
+autosway state outputs
+autosway state inputs
+```
 
-~~~text
-window:new
-    |
-    v
-autosway-events
-    |
-    +--> inspect event
-    +--> apply policy
-    +--> call autosway
-    +--> verify
-~~~
+### Windows and workspaces
 
-Use event automation for deterministic policies. Use Goose for workflows that require planning, contextual decisions, or natural-language intent.
+```text
+autosway workspace <name>
+autosway window focus <criteria>
+autosway window move <criteria> workspace <name>
+autosway window move <criteria> output <name>
+autosway window fullscreen
+autosway window floating
+autosway window scratchpad show
+autosway window scratchpad move
+```
 
-## Goose integration
+### Widgets
 
-Goose recipes are portable YAML workflows. AutoSway recipes should:
+```text
+autosway widget list
+autosway widget add clock
+autosway widget remove battery
+autosway widget set clock color "#00ff88"
+autosway widget set clock format "%H:%M:%S"
+```
 
-1. inspect current state;
-2. determine the smallest required mutation;
-3. execute through the AutoSway CLI;
-4. re-query state;
-5. report what changed and what could not be completed.
+Widget state lives in `~/.config/autosway/widgets.nuon`. This makes simple desktop changes persistent and agent-editable.
 
-## Security boundary
+## Extension model
 
-Desktop automation is powerful. A future MCP extension should expose the same capability vocabulary as the CLI rather than exposing raw swaymsg.
+Adding a capability should normally mean adding one small provider rather than adding a new framework.
 
-Recommended future layers:
+For example:
 
-~~~text
-Recipe
-  -> Capability schema
-  -> Policy/authorization
-  -> AutoSway adapter
-  -> swaymsg / Sway IPC
-~~~
+```text
+widgets/network.nu
+        ↓
+widget add network
+        ↓
+agent can use network widget
+```
 
-This makes AutoSway a useful execution provider for a future portable execution-contract system.
+The same idea can later cover audio, notifications, application profiles, or other desktop controls.
+
+## Boundaries
+
+- Goose decides **what** the user wants.
+- AutoSway exposes **what can be changed**.
+- `swaymsg` performs Sway operations.
+- Swaybar renders the widget stream.
+- The agent remains responsible for interpreting user intent and verifying the result.
+
+The agent should use AutoSway rather than generating arbitrary compositor commands.
+
+## Why Nushell?
+
+Nushell is implementation glue, not the product abstraction. It gives the small control layer structured data, easy JSON handling, and simple scripting while leaving Sway as the actual desktop system.
