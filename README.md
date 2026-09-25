@@ -6,102 +6,130 @@ It combines **Sway IPC**, **Nushell**, **Fuzzel**, **Swaybar**, and optional **G
 
 ## Quickstart
 
-Requirements:
+### Prerequisites
 
 - Sway + Wayland
 - Nushell 0.90+
-- \`swaymsg\`
-- \`fuzzel\` for the launcher
-- \`foot\` for the example terminal workflow
-- \`gio\`/GLib for launching \`.desktop\` applications
-- \`swaylock\` for the lock capability
+- `swaymsg`
+- Fuzzel for the launcher
+- Foot for the example terminal workflow
+- GLib/GIO (`gio`) for launching `.desktop` applications
+- `swaylock` for the lock capability
 - Goose is optional
 
-Install:
+### Install
 
-\`\`\`bash
+```bash
 nu scripts/install.nu
-\`\`\`
+```
 
-Start using AutoSway:
+### Verify
 
-\`\`\`bash
+```bash
 autosway state workspaces
 autosway state outputs
 autosway state tree
 autosway workspace 1
 autosway launch foot
-\`\`\`
+```
 
-Add the optional launcher and status bar:
+### Enable the launcher and status bar
 
-\`\`\`ini
+Add the following to your Sway configuration:
+
+```ini
 bindsym $mod+d exec autosway-launcher
+
 bar {
     status_command autosway-status
 }
-\`\`\`
+```
 
-See [docs/BOOTSTRAP.md](docs/BOOTSTRAP.md) for setup.
+See [Bootstrap](docs/BOOTSTRAP.md) for prerequisites, system requirements, installation, and configuration.
 
 ## Architecture
 
-![AutoSway architecture](docs/architecture.svg)
+![Diagram showing AutoSway presentation, orchestration, capabilities, execution boundary, and Sway layers.](docs/architecture.svg)
 
-\`\`\`text
-Presentation          Orchestration          Capabilities
- Fuzzel                 Nushell              Applications
- Swaybar                Recipes              Windows
- Notifications          Events               Workspaces
-      \                   |                  Outputs
-       \                  |                 System
-        \                 |                   /
-         └──────────── AutoSway ─────────────┘
-                          |
-                    Capability layer
-                          |
-                       swaymsg
-                          |
-                       Sway IPC
-                          |
-                         Sway
-\`\`\`
+The system is split into small layers:
+
+```text
+Presentation
+  Fuzzel · Swaybar · Foot
+           │
+           ▼
+Orchestration
+  Nushell · recipes · events
+           │
+           ▼
+Capabilities
+  applications · windows
+  workspaces · outputs · system
+           │
+           ▼
+Execution boundary
+  capability → swaymsg → Sway IPC
+           │
+           ▼
+      Sway / Wayland
+```
 
 ## Workflow
 
-\`\`\`text
+AutoSway follows a simple execution loop:
+
+```text
 Discover state
      ↓
-Select capability / recipe
+Select capability or recipe
      ↓
-Execute smallest required action
+Execute the smallest required action
      ↓
-Verify resulting state
+Verify the resulting state
      ↓
-Report result
-\`\`\`
+Report the result
+```
 
-For events:
+For event-driven automation:
 
-\`\`\`text
-Sway IPC event → event router → policy/recipe
-       → capability → swaymsg → verify
-\`\`\`
+```text
+Sway IPC event
+      ↓
+Event router
+      ↓
+Policy or recipe
+      ↓
+Capability
+      ↓
+swaymsg
+      ↓
+Verify
+```
+
+For agent-driven workflows, Goose remains outside the execution boundary:
+
+```text
+Goose → Recipe → AutoSway capabilities → swaymsg → Sway
+```
 
 ## Components
 
-- **Launcher:** category-first Fuzzel UI backed by XDG \`.desktop\` metadata.
-- **Status:** independent Nushell widgets rendered through Swaybar's i3bar JSON protocol.
-- **Capabilities:** explicit commands for state, windows, workspaces, outputs, launching, and locking.
-- **Recipes:** declarative workflows that compose capabilities.
-- **Events:** opt-in Sway IPC event stream.
-- **Agent boundary:** Goose can orchestrate recipes without unrestricted generated \`swaymsg\`.
+- **Launcher** — category-first Fuzzel UI backed by XDG `.desktop` metadata.
+- **Status** — independent Nushell widgets rendered through Swaybar's i3bar JSON protocol.
+- **Capabilities** — explicit commands for state, windows, workspaces, outputs, application launch, and locking.
+- **Recipes** — declarative workflows that compose capabilities.
+- **Events** — opt-in Sway IPC event stream for deterministic automation.
+- **Agent boundary** — Goose can orchestrate recipes without unrestricted generated `swaymsg` commands.
 
 ## Repository layout
 
-\`\`\`text
+```text
 autosway/
 ├── bin/
+│   ├── autosway.nu
+│   ├── autosway-events.nu
+│   ├── autosway-launcher.nu
+│   └── autosway-status.nu
 ├── capabilities/
 ├── launcher/
 ├── widgets/
@@ -111,17 +139,17 @@ autosway/
 ├── config/
 ├── docs/
 └── scripts/
-\`\`\`
+```
 
 ## Design principles
 
-1. Sensible defaults.
-2. One job per component.
-3. State before action.
-4. Verify after mutation.
-5. Explicit capabilities.
-6. Recipes express intent; deterministic code executes it.
+1. **Sensible defaults** — use the native Sway/Wayland ecosystem where practical.
+2. **One job per component** — keep presentation, orchestration, and execution separate.
+3. **State before action** — inspect desktop state before mutating it.
+4. **Verify after mutation** — confirm that the requested state was reached.
+5. **Explicit capabilities** — keep automation and agents inside a reviewed capability boundary.
+6. **Recipes express intent** — deterministic code performs the actual desktop operations.
 
 ## Status
 
-Bootstrap / experimental.
+Bootstrap / experimental. The current repository provides the capability CLI, event reader, category launcher, Swaybar widget pipeline, installer, and recipe examples.
