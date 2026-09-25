@@ -1,26 +1,36 @@
-# AutoSway Workflow
+# Workflow
 
-## Interactive
+AutoSway has one primary workflow:
+
 ```text
-User → Fuzzel / command → capability → swaymsg → Sway
+User request
+    ↓
+Goose / Agent
+    ↓
+Read state if necessary
+    ↓
+Choose AutoSway operation
+    ↓
+AutoSway changes Sway or widget state
+    ↓
+Agent verifies result
 ```
 
-## Status
+Example:
+
 ```text
-Linux data → Nushell widgets → i3bar JSON → Swaybar
+"Remove the battery and add a clock."
+
+state → widget remove battery → widget add clock → verify
 ```
 
-## Recipes
+Example:
+
 ```text
-Intent → inspect → capability → mutate → verify → report
+"Make the focused desktop look cleaner."
+
+Agent inspects state → chooses supported operations → applies changes → verifies
+
 ```
 
-## Events
-```text
-Sway IPC event → router → policy/recipe → capability → swaymsg → verify
-```
-
-Goose is optional and remains outside the execution boundary:
-```text
-Goose → recipe → AutoSway capabilities → Sway
-```
+AutoSway does not require a separate recipe engine for these operations. A recipe can be added later when a workflow needs to be saved or repeated.
